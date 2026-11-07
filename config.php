@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/database_connection.php';
+require_once __DIR__ . '/pdo_mysql_session_handler.php';
+
 $forwardedProto = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]));
 $isSecureRequest = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https';
 
@@ -7,7 +10,19 @@ session_set_cookie_params([
     'secure' => $isSecureRequest,
     'samesite' => $isSecureRequest ? 'None' : 'Lax'
 ]);
-session_start();
+session_set_save_handler(new PdoMySqlSessionHandler($pdo), true);
+
+try {
+    if (!session_start()) {
+        throw new RuntimeException('PHP session_start returned false.');
+    }
+} catch (Throwable $error) {
+    error_log('Warung session initialization failed: ' . $error->getMessage());
+    http_response_code(500);
+    exit('Sesi tidak dapat dimulai. Pastikan penyimpanan sesi sudah disiapkan.');
+}
+
+header('Cache-Control: no-store, private');
 
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -27,23 +42,9 @@ function verify_csrf(): void
     }
 }
 
-$host = '127.0.0.1';
-$dbname = 'penjualan_sederhana';
-$dbuser = 'root';
-$dbpass = '';
-
-try {
-    $pdo = new PDO(
-        "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
-        $dbuser,
-        $dbpass,
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-    );
-} catch (PDOException $error) {
-    exit('Koneksi database gagal. Pastikan MySQL XAMPP aktif dan database sudah diimpor.');
-}
-
-// Migrasi ringan agar database lama tetap bisa memakai fitur baru.
+if (!$isProduction) {
+    // Keep local demo setup out of the existing Production database.
+    // Migrasi ringan agar database lama tetap bisa memakai fitur baru.
 $migrations = [
     'users' => [
         'full_name' => 'ALTER TABLE users ADD full_name VARCHAR(100) NULL AFTER username',
@@ -149,6 +150,8 @@ foreach ($catalog as $product) {
     } else {
         $insertProduct->execute($product);
     }
+}
+
 }
 
 if (!isset($_SESSION['cart'])) {

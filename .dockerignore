@@ -1,0 +1,10 @@
+.git
+.vercel
+.env
+.env.*
+*.sql
+migrate_sessions.php
+README.md
+Dockerfile
+.dockerignore
+*.log
