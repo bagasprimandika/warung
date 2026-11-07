@@ -43,3 +43,10 @@ CREATE TABLE IF NOT EXISTS order_items (
     FOREIGN KEY (order_id) REFERENCES orders(id),
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
+
+CREATE TABLE IF NOT EXISTS app_sessions (
+    session_id VARBINARY(128) NOT NULL PRIMARY KEY,
+    session_data MEDIUMBLOB NOT NULL,
+    last_activity INT UNSIGNED NOT NULL,
+    INDEX idx_app_sessions_last_activity (last_activity)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
