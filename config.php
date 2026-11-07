@@ -1,8 +1,11 @@
 <?php
+$forwardedProto = strtolower(trim(explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')[0]));
+$isSecureRequest = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https';
+
 session_set_cookie_params([
     'httponly' => true,
-    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-    'samesite' => 'Lax'
+    'secure' => $isSecureRequest,
+    'samesite' => $isSecureRequest ? 'None' : 'Lax'
 ]);
 session_start();
 
